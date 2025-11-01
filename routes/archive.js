@@ -4,18 +4,20 @@ import { ensureUserDirs, sanitizeName } from '../utils/fileHelpers.js';
 import { DownloadManager } from '../utils/downloadManager.js';
 import { Logger } from '../utils/logger.js';
 import { jobManager } from '../utils/jobManager.js';
+import { LibraryDB } from '../utils/database.js';
+import { migrateJsonToDb } from '../utils/migrateToDb.js';
 import archiver from 'archiver';
 
 export default async function archiveRoutes(fastify, opts) {
   const { dataDir } = opts;
 
   fastify.post('/run', async (req, reply) => {
-    const { username, cookie, limit, rateLimitMs } = req.body;
+    const { username, cookie, limit, rateLimitMs, format } = req.body;
     if (!cookie || !username)
-      return reply.code(400).send({ error: 'Missing username or cookie' });
+      return reply.code(400).send({ error: 'Missing username or token' });
 
     const user = sanitizeName(username);
-    const { baseDir, libPath, dlDir } = await ensureUserDirs(dataDir, user);
+    const { baseDir, dlDir } = await ensureUserDirs(dataDir, user);
 
     // Initialize job tracking
     jobManager.create(user);
@@ -29,6 +31,12 @@ export default async function archiveRoutes(fastify, opts) {
     await logger.init();
 
     try {
+      // Migrate from JSON to database if needed
+      await migrateJsonToDb(dataDir, user);
+
+      // Initialize database
+      const db = new LibraryDB(dataDir, user);
+
       // Initialize download manager
       const dm = new DownloadManager({
         dataDir,
@@ -37,16 +45,13 @@ export default async function archiveRoutes(fastify, opts) {
         logger,
         concurrency: 3,
         maxRetries: 3,
-        rateLimitMs: rateLimitMs || 1000 // Default 1 second between downloads
+        rateLimitMs: rateLimitMs || 1000, // Default 1 second between downloads
+        limit: limit || null, // Pass limit to control page fetching
+        format: format || 'mp3' // Default to mp3 if not specified
       });
 
-      // Load existing library JSON
-      let oldLib = [];
-      try {
-        oldLib = JSON.parse(await fs.readFile(libPath, 'utf8'));
-      } catch {}
-
-      const oldIds = new Set(oldLib.map(i => i.id));
+      // Get existing clip IDs from database
+      const oldIds = new Set(db.getAllIds());
 
       // Fetch latest library from Suno
       const lib = await dm.fetchLibrary();
@@ -68,22 +73,27 @@ export default async function archiveRoutes(fastify, opts) {
         await dm.downloadBatch(newItems, dlDir);
       }
 
-      // Merge and save library
-      const merged = [...oldLib, ...newItems];
-      await fs.writeFile(libPath, JSON.stringify(merged, null, 2));
-      await logger.info(`Library updated: ${merged.length} total items`);
+      // Save new items to database
+      if (newItems.length > 0) {
+        db.insertMany(newItems);
+      }
+
+      const totalCount = db.count();
+      await logger.info(`Library updated: ${totalCount} total items`);
 
       // Complete job
       const stats = dm.getProgress();
       await logger.complete(stats);
       jobManager.complete(user, stats);
 
+      db.close();
+
       return {
         user,
         downloaded: stats.downloaded,
         failed: stats.failed,
         skipped: stats.skipped,
-        total: merged.length,
+        total: totalCount,
         errors: dm.getErrors()
       };
     } catch (err) {
@@ -96,10 +106,11 @@ export default async function archiveRoutes(fastify, opts) {
   // Return current user library metadata
   fastify.get('/library/:username', async (req, reply) => {
     const user = sanitizeName(req.params.username);
-    const libPath = path.join(dataDir, user, 'library.json');
     try {
-      const json = await fs.readFile(libPath, 'utf8');
-      return JSON.parse(json);
+      const db = new LibraryDB(dataDir, user);
+      const clips = db.getAll();
+      db.close();
+      return clips;
     } catch {
       return reply.code(404).send({ error: 'No library found' });
     }

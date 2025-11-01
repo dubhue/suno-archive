@@ -21,9 +21,19 @@
         </div>
 
         <div class="form-group">
-          <label for="cookie">Suno Cookie</label>
-          <textarea id="cookie" name="cookie" placeholder="Paste your full Suno cookie here..." required></textarea>
-          <small class="help-text">Your cookie is never stored and only used for this request</small>
+          <label for="cookie">Suno Bearer Token</label>
+          <textarea id="cookie" name="cookie" placeholder="Paste your Suno bearer token here..." required></textarea>
+          <small class="help-text">Your token is never stored and only used for this request</small>
+        </div>
+
+        <div class="form-group">
+          <label for="format">Audio Format</label>
+          <select id="format" name="format" required>
+            <option value="mp3">MP3 (Compressed)</option>
+            <option value="wav">WAV (Lossless)</option>
+            <option value="both">Both MP3 + WAV</option>
+          </select>
+          <small class="help-text">Choose audio quality and file size preference</small>
         </div>
 
         <div class="form-group">
@@ -84,6 +94,7 @@
 
       const username = form.username.value.trim();
       const cookie = form.cookie.value.trim();
+      const format = form.format.value;
       const limit = form.limit.value ? parseInt(form.limit.value) : null;
       currentUsername = username;
 
@@ -100,7 +111,7 @@
       progressFill.style.width = '0%';
 
       try {
-        const payload = { username, cookie };
+        const payload = { username, cookie, format };
         if (limit) payload.limit = limit;
 
         const res = await fetch('/api/run', {
