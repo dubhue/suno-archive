@@ -12,7 +12,7 @@ export default async function archiveRoutes(fastify, opts) {
   const { dataDir } = opts;
 
   fastify.post('/run', async (req, reply) => {
-    const { username, cookie, limit, rateLimitMs, format, fullSync } = req.body;
+    const { username, cookie, limit, rateLimitMs, format, fullSync, verifyFiles } = req.body;
     if (!cookie || !username)
       return reply.code(400).send({ error: 'Missing username or token' });
 
@@ -49,6 +49,10 @@ export default async function archiveRoutes(fastify, opts) {
         await logger.info('Full sync mode enabled: fetching all pages');
       }
 
+      if (verifyFiles) {
+        await logger.info('Verify files mode enabled: checking filesystem for existing files');
+      }
+
       // Initialize download manager
       const dm = new DownloadManager({
         dataDir,
@@ -62,7 +66,9 @@ export default async function archiveRoutes(fastify, opts) {
         format: format || 'mp3', // Default to mp3 if not specified
         existingIds: oldIds,
         db: db, // Pass database for incremental writes
-        fullSync: shouldFullSync // Enable full sync on first run or manual override
+        fullSync: shouldFullSync, // Enable full sync on first run or manual override
+        verifyFiles: verifyFiles || false, // Enable filesystem verification if requested
+        dlDir: dlDir // Pass download directory for file checks
       });
 
       // Fetch latest library from Suno

@@ -50,6 +50,14 @@
           <small class="help-text">Fetch all pages (useful after interrupted runs or to ensure complete library)</small>
         </div>
 
+        <div class="form-group checkbox-group">
+          <label>
+            <input type="checkbox" id="verifyFiles" name="verifyFiles" />
+            <span>Verify Files on Disk</span>
+          </label>
+          <small class="help-text">Check filesystem for existing files before downloading (slower, but re-downloads missing files)</small>
+        </div>
+
         <button type="submit" id="submit-btn">
           <span class="btn-text">Start Archive</span>
         </button>
@@ -105,6 +113,7 @@
       const format = form.format.value;
       const limit = form.limit.value ? parseInt(form.limit.value) : null;
       const fullSync = document.getElementById('fullSync').checked;
+      const verifyFiles = document.getElementById('verifyFiles').checked;
       currentUsername = username;
 
       // Reset UI
@@ -114,15 +123,16 @@
       submitBtn.disabled = true;
       submitBtn.innerHTML = '<span class="btn-text">Running...</span>';
 
-      statusText.textContent = limit
-        ? `🔄 Starting archive (testing with ${limit} songs)...`
-        : fullSync
-        ? '🔄 Starting full sync (fetching all pages)...'
-        : '🔄 Starting archive...';
+      let statusMsg = '🔄 Starting archive';
+      if (limit) statusMsg = `🔄 Starting archive (testing with ${limit} songs)`;
+      else if (fullSync && verifyFiles) statusMsg = '🔄 Starting full sync with file verification';
+      else if (fullSync) statusMsg = '🔄 Starting full sync (fetching all pages)';
+      else if (verifyFiles) statusMsg = '🔄 Starting archive with file verification';
+      statusText.textContent = statusMsg + '...';
       progressFill.style.width = '0%';
 
       try {
-        const payload = { username, cookie, format, fullSync };
+        const payload = { username, cookie, format, fullSync, verifyFiles };
         if (limit) payload.limit = limit;
 
         const res = await fetch('/api/run', {

@@ -62,9 +62,13 @@ The server will be available at `http://localhost:8080`
    - This is your first run (auto-enabled)
    - A previous run was interrupted
    - You want to ensure your entire library is captured
-6. Click "Start Archive"
-7. Wait for the download to complete
-8. View your library or export as ZIP
+6. **(Optional)** Check "Verify Files on Disk" if:
+   - You've moved or deleted files from the download folder
+   - You want to re-download missing files
+   - You suspect files may be corrupted or incomplete
+7. Click "Start Archive"
+8. Wait for the download to complete
+9. View your library or export as ZIP
 
 ## API Endpoints
 
@@ -196,6 +200,13 @@ Downloads the user's entire archive as a ZIP file.
 - Can be manually enabled via checkbox in the UI or `fullSync: true` in the API
 - Use this after an interrupted run to ensure your entire library is captured
 - Prevents missing songs that might be beyond the early-stop threshold
+
+**Verify Files Mode:**
+- Checks the filesystem for existing files before downloading
+- Skips downloads only if the actual file exists on disk
+- Use this when you've moved/deleted files but the database still has records
+- Slower than database-only checking, but ensures files are actually present
+- Re-downloads missing or corrupted files automatically
 
 **Example Scenario:**
 1. First run: Downloads 1000 songs (full sync mode auto-enabled, all pages fetched, each saved to DB immediately)

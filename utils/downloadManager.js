@@ -3,7 +3,7 @@ import path from 'path';
 import fetch from 'node-fetch';
 
 export class DownloadManager {
-  constructor({ dataDir, username, cookie, logger, concurrency = 3, maxRetries = 3, rateLimitMs = 1000, limit = null, format = 'mp3', existingIds = new Set(), db = null, fullSync = false }) {
+  constructor({ dataDir, username, cookie, logger, concurrency = 3, maxRetries = 3, rateLimitMs = 1000, limit = null, format = 'mp3', existingIds = new Set(), db = null, fullSync = false, verifyFiles = false, dlDir = null }) {
     this.dataDir = dataDir;
     this.username = username;
     this.cookie = cookie;
@@ -16,6 +16,8 @@ export class DownloadManager {
     this.existingIds = existingIds; // Set of existing IDs for smart pagination
     this.db = db; // Database instance for incremental writes
     this.fullSync = fullSync; // If true, disable smart pagination and fetch all pages
+    this.verifyFiles = verifyFiles; // If true, check filesystem for existing files
+    this.dlDir = dlDir; // Download directory for filesystem checks
 
     this.progress = {
       total: 0,
@@ -142,6 +144,28 @@ export class DownloadManager {
 
     // Determine which formats to download
     const formats = this.format === 'both' ? ['mp3', 'wav'] : [this.format];
+
+    // If verifyFiles is enabled, check if all required files exist
+    if (this.verifyFiles) {
+      let allFilesExist = true;
+      for (const fmt of formats) {
+        const fileName = `${fileBase}.${fmt}`;
+        const filePath = path.join(dlDir, fileName);
+        try {
+          await fs.access(filePath);
+        } catch {
+          allFilesExist = false;
+          break;
+        }
+      }
+
+      if (allFilesExist) {
+        this.logger.info(`[${this.username}] ⏭ ${fileBase} (files exist, skipping)`);
+        this.progress.skipped++;
+        return true; // File exists, consider it a success
+      }
+    }
+
     let successCount = 0;
     const formatErrors = [];
 
