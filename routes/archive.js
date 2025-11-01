@@ -37,6 +37,9 @@ export default async function archiveRoutes(fastify, opts) {
       // Initialize database
       const db = new LibraryDB(dataDir, user);
 
+      // Get existing clip IDs from database
+      const oldIds = new Set(db.getAllIds());
+
       // Initialize download manager
       const dm = new DownloadManager({
         dataDir,
@@ -47,14 +50,10 @@ export default async function archiveRoutes(fastify, opts) {
         maxRetries: 3,
         rateLimitMs: rateLimitMs || 1000, // Default 1 second between downloads
         limit: limit || null, // Pass limit to control page fetching
-        format: format || 'mp3' // Default to mp3 if not specified
+        format: format || 'mp3', // Default to mp3 if not specified
+        existingIds: oldIds,
+        db: db // Pass database for incremental writes
       });
-
-      // Get existing clip IDs from database
-      const oldIds = new Set(db.getAllIds());
-
-      // Pass existing IDs to enable smart pagination
-      dm.existingIds = oldIds;
 
       // Fetch latest library from Suno
       const lib = await dm.fetchLibrary();
@@ -72,13 +71,9 @@ export default async function archiveRoutes(fastify, opts) {
       await logger.info(`Found ${newItems.length} new items to download`);
 
       // Download all new items with concurrency control
+      // Database writes happen incrementally during downloads
       if (newItems.length > 0) {
         await dm.downloadBatch(newItems, dlDir);
-      }
-
-      // Save new items to database
-      if (newItems.length > 0) {
-        db.insertMany(newItems);
       }
 
       const totalCount = db.count();

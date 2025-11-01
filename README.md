@@ -180,17 +180,18 @@ Downloads the user's entire archive as a ZIP file.
 - First-time archives still fetch all pages to build the complete library
 
 **Safe Interruption Handling:**
-- If an archive job is interrupted (network failure, manual stop, server restart), the system safely resumes on the next run
-- Only fully downloaded tracks are recorded in the database
+- Database writes happen **incrementally** after each successful download
+- If an archive job is interrupted (network failure, manual stop, server restart), progress is preserved
+- Successfully downloaded tracks are already saved to the database
 - Partial downloads are automatically re-downloaded and overwritten on the next run
 - No risk of corrupted files - you always get complete audio files
 
 **Example Scenario:**
-1. First run: Downloads 1000 songs (all pages fetched)
+1. First run: Downloads 1000 songs (all pages fetched, each saved to DB immediately)
 2. Create 5 new songs on Suno
 3. Second run: Fetches only first 2 pages (~4 seconds), downloads 5 new songs
-4. Job interrupted after downloading 3/5 songs
-5. Third run: Re-fetches first 2 pages, downloads all 5 songs (2 already in DB are skipped, 3 partial ones are re-downloaded)
+4. Job interrupted after downloading 3/5 songs → **Database has all 1003 songs (1000 old + 3 new)**
+5. Third run: Fetches first 2 pages, smart pagination detects 1003 existing songs, downloads only remaining 2 new songs
 
 ## Architecture
 

@@ -3,7 +3,7 @@ import path from 'path';
 import fetch from 'node-fetch';
 
 export class DownloadManager {
-  constructor({ dataDir, username, cookie, logger, concurrency = 3, maxRetries = 3, rateLimitMs = 1000, limit = null, format = 'mp3', existingIds = new Set() }) {
+  constructor({ dataDir, username, cookie, logger, concurrency = 3, maxRetries = 3, rateLimitMs = 1000, limit = null, format = 'mp3', existingIds = new Set(), db = null }) {
     this.dataDir = dataDir;
     this.username = username;
     this.cookie = cookie;
@@ -14,6 +14,7 @@ export class DownloadManager {
     this.limit = limit; // Optional limit for testing
     this.format = format; // 'mp3', 'wav', or 'both'
     this.existingIds = existingIds; // Set of existing IDs for smart pagination
+    this.db = db; // Database instance for incremental writes
 
     this.progress = {
       total: 0,
@@ -212,7 +213,17 @@ export class DownloadManager {
     while (queue.length > 0) {
       const item = queue.shift();
       if (item) {
-        await this.downloadItem(item, dlDir);
+        const success = await this.downloadItem(item, dlDir);
+
+        // Write to database immediately after successful download
+        if (success && this.db) {
+          try {
+            this.db.insert(item);
+            this.existingIds.add(item.id); // Update in-memory set for smart pagination
+          } catch (err) {
+            this.logger.error(`[${this.username}] Failed to write ${item.id} to database: ${err.message}`);
+          }
+        }
       }
     }
   }
