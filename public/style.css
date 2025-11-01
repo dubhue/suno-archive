@@ -86,6 +86,20 @@ textarea {
   color: #888;
 }
 
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.checkbox-group input[type="checkbox"] {
+  width: auto;
+  cursor: pointer;
+  transform: scale(1.2);
+}
+
 button {
   width: 100%;
   padding: 1rem;

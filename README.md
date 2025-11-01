@@ -58,9 +58,13 @@ The server will be available at `http://localhost:8080`
 2. Enter your username
 3. Paste your Suno bearer token (see [How to Get Your Bearer Token](#how-to-get-your-bearer-token))
 4. Select audio format (MP3, WAV, or both)
-5. Click "Start Archive"
-6. Wait for the download to complete
-7. View your library or export as ZIP
+5. **(Optional)** Check "Full Sync Mode" if:
+   - This is your first run (auto-enabled)
+   - A previous run was interrupted
+   - You want to ensure your entire library is captured
+6. Click "Start Archive"
+7. Wait for the download to complete
+8. View your library or export as ZIP
 
 ## API Endpoints
 
@@ -177,7 +181,7 @@ Downloads the user's entire archive as a ZIP file.
 - The system tracks which songs are already archived in a SQLite database
 - When fetching new content, it stops pagination after encountering 2 consecutive pages of already-downloaded content
 - For large archives (1000+ songs), this reduces sync time from ~100 seconds to ~4 seconds when you only have a few new songs
-- First-time archives still fetch all pages to build the complete library
+- First-time archives automatically use full sync mode to build the complete library
 
 **Safe Interruption Handling:**
 - Database writes happen **incrementally** after each successful download
@@ -186,12 +190,19 @@ Downloads the user's entire archive as a ZIP file.
 - Partial downloads are automatically re-downloaded and overwritten on the next run
 - No risk of corrupted files - you always get complete audio files
 
+**Full Sync Mode:**
+- Disables smart pagination and fetches all pages from Suno
+- Automatically enabled on first run (empty database)
+- Can be manually enabled via checkbox in the UI or `fullSync: true` in the API
+- Use this after an interrupted run to ensure your entire library is captured
+- Prevents missing songs that might be beyond the early-stop threshold
+
 **Example Scenario:**
-1. First run: Downloads 1000 songs (all pages fetched, each saved to DB immediately)
+1. First run: Downloads 1000 songs (full sync mode auto-enabled, all pages fetched, each saved to DB immediately)
 2. Create 5 new songs on Suno
-3. Second run: Fetches only first 2 pages (~4 seconds), downloads 5 new songs
+3. Second run: Smart pagination fetches only first 2 pages (~4 seconds), downloads 5 new songs
 4. Job interrupted after downloading 3/5 songs → **Database has all 1003 songs (1000 old + 3 new)**
-5. Third run: Fetches first 2 pages, smart pagination detects 1003 existing songs, downloads only remaining 2 new songs
+5. Third run (full sync enabled): Fetches all pages to be safe, downloads remaining 2 new songs
 
 ## Architecture
 

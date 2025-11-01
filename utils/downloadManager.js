@@ -3,7 +3,7 @@ import path from 'path';
 import fetch from 'node-fetch';
 
 export class DownloadManager {
-  constructor({ dataDir, username, cookie, logger, concurrency = 3, maxRetries = 3, rateLimitMs = 1000, limit = null, format = 'mp3', existingIds = new Set(), db = null }) {
+  constructor({ dataDir, username, cookie, logger, concurrency = 3, maxRetries = 3, rateLimitMs = 1000, limit = null, format = 'mp3', existingIds = new Set(), db = null, fullSync = false }) {
     this.dataDir = dataDir;
     this.username = username;
     this.cookie = cookie;
@@ -15,6 +15,7 @@ export class DownloadManager {
     this.format = format; // 'mp3', 'wav', or 'both'
     this.existingIds = existingIds; // Set of existing IDs for smart pagination
     this.db = db; // Database instance for incremental writes
+    this.fullSync = fullSync; // If true, disable smart pagination and fetch all pages
 
     this.progress = {
       total: 0,
@@ -74,8 +75,8 @@ export class DownloadManager {
           this.logger.info(`[${this.username}] Sample clip fields: ${Object.keys(clips[0]).join(', ')}`);
         }
 
-        // Smart pagination: check if all clips on this page already exist
-        if (this.existingIds.size > 0) {
+        // Smart pagination: check if all clips on this page already exist (unless fullSync is enabled)
+        if (!this.fullSync && this.existingIds.size > 0) {
           const newClipsOnPage = clips.filter(c => !this.existingIds.has(c.id)).length;
 
           if (newClipsOnPage === 0) {
@@ -90,6 +91,9 @@ export class DownloadManager {
             consecutiveExistingPages = 0; // Reset counter if we find new content
             this.logger.info(`[${this.username}] Page ${page} contains ${newClipsOnPage} new items`);
           }
+        } else if (this.fullSync) {
+          const newClipsOnPage = clips.filter(c => !this.existingIds.has(c.id)).length;
+          this.logger.info(`[${this.username}] Full sync mode: Page ${page} has ${newClipsOnPage} new items (smart pagination disabled)`);
         }
 
         page++;
