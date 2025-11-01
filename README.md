@@ -11,7 +11,8 @@ A self-hosted web tool for backing up and preserving your Suno creations. Design
 - **Detailed Logging**: Timestamped logs for each archive run
 - **Export to ZIP**: Download entire user archive as a ZIP file
 - **Beautiful UI**: Modern, responsive web interface
-- **No Credentials Stored**: Your cookie is only used during the request
+- **Multiple Audio Formats**: Download MP3, WAV, or both formats
+- **No Credentials Stored**: Your bearer token is only used during the request
 
 ## Quick Start
 
@@ -53,10 +54,11 @@ The server will be available at `http://localhost:8080`
 
 1. Open the web interface in your browser
 2. Enter your username
-3. Paste your Suno cookie (see [How to Get Your Cookie](#how-to-get-your-cookie))
-4. Click "Start Archive"
-5. Wait for the download to complete
-6. View your library or export as ZIP
+3. Paste your Suno bearer token (see [How to Get Your Bearer Token](#how-to-get-your-bearer-token))
+4. Select audio format (MP3, WAV, or both)
+5. Click "Start Archive"
+6. Wait for the download to complete
+7. View your library or export as ZIP
 
 ## API Endpoints
 
@@ -68,9 +70,15 @@ Triggers an archive job for a user.
 ```json
 {
   "username": "your-username",
-  "cookie": "your-suno-cookie"
+  "cookie": "your-suno-bearer-token",
+  "format": "mp3"
 }
 ```
+
+**Format Options:**
+- `"mp3"` - Compressed MP3 format (default)
+- `"wav"` - Lossless WAV format (may require premium plan)
+- `"both"` - Both MP3 and WAV (falls back to MP3 if WAV unavailable)
 
 **Response:**
 ```json
@@ -128,28 +136,36 @@ Downloads the user's entire archive as a ZIP file.
 ```
 /data/suno/
   ├── alice/
-  │    ├── library.json          # Metadata for all tracks
-  │    ├── downloads/            # Downloaded MP3 files
-  │    │    ├── track_123.mp3
-  │    │    └── track_124.mp3
+  │    ├── library.db            # SQLite database with metadata
+  │    ├── downloads/            # Downloaded audio files
+  │    │    ├── My Song - track_123.mp3
+  │    │    ├── My Song - track_123.wav
+  │    │    └── Another Track - track_124.mp3
   │    └── logs/                 # Timestamped log files
   │         └── run-2025-10-31T12-00-00.log
   └── bob/
-       ├── library.json
+       ├── library.db
        └── downloads/
 ```
 
-## How to Get Your Cookie
+## How to Get Your Bearer Token
 
 1. Log in to [suno.com](https://suno.com) in your browser
-2. Open Developer Tools (F12 or Cmd+Opt+I)
+2. Open Developer Tools (F12 or Cmd+Opt+I on Mac, F12 or Ctrl+Shift+I on Windows/Linux)
 3. Go to the **Network** tab
-4. Refresh the page
-5. Click any request to `suno.com`
-6. Find the **Cookie** header in the request headers
-7. Copy the entire cookie value
+4. Refresh the page or navigate to your library
+5. Click any request to `studio-api.prod.suno.com` (filter by "studio-api" for easier finding)
+6. In the **Headers** section, find the **Authorization** header
+7. Copy the bearer token value (it looks like: `Bearer eyJhbGc...`)
+8. Paste the **entire value** including "Bearer " into the tool
 
-**Security Note:** Your cookie is never stored persistently. It only exists in memory during the archive job.
+**Alternative Method:**
+1. In Developer Tools, go to the **Application** tab (Chrome) or **Storage** tab (Firefox)
+2. Navigate to **Cookies** → `https://suno.com`
+3. Find and copy the session/auth cookie value
+4. Paste it into the tool (either cookie or bearer token works)
+
+**Security Note:** Your bearer token is never stored persistently. It only exists in memory during the archive job and is immediately discarded afterward.
 
 ## Architecture
 
@@ -193,6 +209,8 @@ Downloads the user's entire archive as a ZIP file.
 - Fetches library from Suno API
 - Manages concurrent downloads with configurable workers
 - Implements retry logic with exponential backoff
+- Supports multiple audio formats (MP3, WAV, or both)
+- Gracefully handles format restrictions (e.g., WAV for premium users only)
 - Tracks progress and errors
 
 ### Logger (`utils/logger.js`)
@@ -228,10 +246,10 @@ docker run -d \
 
 ## Security Considerations
 
-- **Cookie Never Stored**: User cookies only exist in memory during requests
+- **Bearer Token Never Stored**: User bearer tokens only exist in memory during requests
 - **Input Sanitization**: Usernames are sanitized to prevent path traversal
 - **User Isolation**: Each user has their own isolated directory
-- **No Public File Serving**: MP3 files are not exposed publicly unless explicitly routed
+- **No Public File Serving**: Audio files are not exposed publicly unless explicitly routed
 - **HTTPS Recommended**: Use a reverse proxy (NGINX/Caddy) for HTTPS in production
 
 ## Future Enhancements
@@ -239,7 +257,6 @@ docker run -d \
 - [ ] WebSocket support for real-time progress updates
 - [ ] Background job scheduling (cron-style)
 - [ ] Resume incomplete downloads
-- [ ] Configurable download quality
 - [ ] S3/cloud storage backend option
 - [ ] Multi-user authentication
 - [ ] Track deduplication
