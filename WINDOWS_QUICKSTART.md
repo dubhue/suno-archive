@@ -11,13 +11,15 @@ A full, simple setup guide for getting the Suno Archive Tool running on Windows.
 
 1. Download and unzip the project ZIP.
    You might see folders like:
-   ```
+
+   ```bash
    suno-archive-main/
    suno-archive-main (2)/
    ```
 
 2. Open the folder until you see files like:
-   ```
+
+   ```bash
    package.json
    server.js
    .env.example
@@ -25,18 +27,21 @@ A full, simple setup guide for getting the Suno Archive Tool running on Windows.
 
 3. In File Explorer, click the address bar → type `cmd` → press Enter.
    You should now see something like:
-   ```
+
+   ```bash
    C:\Users\<you>\Downloads\suno-archive-main (2)\suno-archive-main>
    ```
 
 ## ⚙️ 2. Fix PowerShell Script Errors (if any)
 
 If PowerShell says:
-```
+
+```bash
 npm.ps1 cannot be loaded because running scripts is disabled
 ```
 
 **→ Open Command Prompt (black window) instead**, or run this in PowerShell (Admin):
+
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 ```
@@ -44,12 +49,14 @@ Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 ## 📥 3. Install Dependencies
 
 Run this inside the folder that has `package.json`:
+
 ```bash
 npm install
 ```
 
 ✅ You should see:
-```
+
+```bash
 added 200+ packages in 10s
 found 0 vulnerabilities
 ```
@@ -59,12 +66,14 @@ found 0 vulnerabilities
 ## 🧩 4. Create Your .env File
 
 **Option A — Copy from example:**
+
 ```bash
 copy .env.example .env
 notepad .env
 ```
 
 If blank or missing, paste this:
+
 ```env
 DATA_DIR=./data
 PORT=8080
@@ -72,11 +81,13 @@ RATE_LIMIT_MS=1000
 ```
 
 Save and close, then check it:
+
 ```bash
 type .env
 ```
 
 Create data folder if needed:
+
 ```bash
 mkdir data
 ```
@@ -91,32 +102,39 @@ mkdir data
    - `v2/`
    - or `studio-api.prod.suno.com`
 6. In the right panel, open the **Headers** tab → scroll to **Request Headers** → find:
-   ```
+
+   ```text
    authorization: Bearer eyJhbGciOi...
    ```
+
 7. Copy everything **after** `Bearer ` (this is your token). **Keep it private.**
 
 ## 🚀 6. Start the Server
 
 Back in Command Prompt:
+
 ```bash
 npm start
 ```
 
 You'll see:
-```
+
+```bash
 Server listening at http://127.0.0.1:8080
 ```
+
 That means it's running!
 
 Then open in your browser:
-```
+
+```text
 http://localhost:8080
 ```
 
 ## 🖥️ 7. Run Your First Archive
 
 In your browser form:
+
 - **Username**: any name (e.g. `lucy`)
 - **Suno Bearer Token**: paste your token
 - **Audio Format**: `mp3`
@@ -125,9 +143,11 @@ In your browser form:
 Click **Start Archive** → you'll see progress.
 
 When it says "✅ Archive complete!", check:
-```
+
+```bash
 data\<username>\downloads\
 ```
+
 You'll see `.mp3` files like `My Song - track_123.mp3`.
 
 ## 💾 8. For Large Libraries
@@ -144,17 +164,18 @@ Use the **Export ZIP** button in the UI to download everything as one archive.
 
 ## 🧰 Troubleshooting
 
-| Problem | Solution |
-|---------|----------|
-| `npm.ps1 cannot be loaded` | Use Command Prompt or set PowerShell policy |
-| `ENOENT: no package.json` | Move into inner folder containing it |
-| `EADDRINUSE: port 8080` | Change `PORT` in `.env` (e.g. `9090`) |
-| `429 Too Many Requests` | Increase rate limit in `.env` (e.g. `RATE_LIMIT_MS=2000`) |
-| Where are my files? | In `data\<username>\downloads\` |
+| Problem                    | Solution                                                  |
+| -------------------------- | --------------------------------------------------------- |
+| `npm.ps1 cannot be loaded` | Use Command Prompt or set PowerShell policy               |
+| `ENOENT: no package.json`  | Move into inner folder containing it                      |
+| `EADDRINUSE: port 8080`    | Change `PORT` in `.env` (e.g. `9090`)                     |
+| `429 Too Many Requests`    | Increase rate limit in `.env` (e.g. `RATE_LIMIT_MS=2000`) |
+| Where are my files?        | In `data\<username>\downloads\`                           |
 
 ## ♻️ Incremental Sync
 
 Re-running the same username will:
+
 - Skip already downloaded tracks
 - Only fetch new songs
 - Update your `library.db`
