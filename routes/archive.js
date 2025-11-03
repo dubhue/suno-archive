@@ -142,6 +142,19 @@ export default async function archiveRoutes(fastify, opts) {
     return job;
   });
 
+  // Check if user database exists and has data
+  fastify.get('/db-status/:username', async (req, reply) => {
+    const user = sanitizeName(req.params.username);
+    try {
+      const db = new LibraryDB(dataDir, user);
+      const count = db.count();
+      db.close();
+      return { exists: true, count, isEmpty: count === 0 };
+    } catch {
+      return { exists: false, count: 0, isEmpty: true };
+    }
+  });
+
   // Export user archive as ZIP
   fastify.post('/export/:username', async (req, reply) => {
     const user = sanitizeName(req.params.username);

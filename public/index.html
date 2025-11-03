@@ -105,6 +105,33 @@
 
     let currentUsername = null;
 
+    // Check database status when username changes
+    const usernameInput = document.getElementById('username');
+    const fullSyncCheckbox = document.getElementById('fullSync');
+
+    usernameInput.addEventListener('blur', async () => {
+      const username = usernameInput.value.trim();
+      if (!username) return;
+
+      try {
+        const res = await fetch(`/api/db-status/${username}`);
+        const status = await res.json();
+
+        if (status.isEmpty) {
+          fullSyncCheckbox.checked = true;
+          fullSyncCheckbox.disabled = true;
+          fullSyncCheckbox.parentElement.parentElement.querySelector('.help-text').textContent =
+            'Full sync required (first run - database is empty)';
+        } else {
+          fullSyncCheckbox.disabled = false;
+          fullSyncCheckbox.parentElement.parentElement.querySelector('.help-text').textContent =
+            'Fetch all pages (useful after interrupted runs or to ensure complete library)';
+        }
+      } catch (err) {
+        console.error('Failed to check database status:', err);
+      }
+    });
+
     form.addEventListener('submit', async e => {
       e.preventDefault();
 
