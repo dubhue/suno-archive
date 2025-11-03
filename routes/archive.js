@@ -19,6 +19,12 @@ export default async function archiveRoutes(fastify, opts) {
     const user = sanitizeName(username);
     const { baseDir, dlDir } = await ensureUserDirs(dataDir, user);
 
+    // Use rate limit from request, or fall back to env var, or default to 2000ms (2 seconds)
+    const effectiveRateLimit = rateLimitMs ?? (process.env.RATE_LIMIT_MS ? parseInt(process.env.RATE_LIMIT_MS) : 2000);
+    const effectiveConcurrency = process.env.CONCURRENCY ? parseInt(process.env.CONCURRENCY) : 3;
+    const effectiveMaxRetries = process.env.MAX_RETRIES ? parseInt(process.env.MAX_RETRIES) : 3;
+    const effectiveFormat = format || process.env.DEFAULT_FORMAT || 'mp3';
+
     // Initialize job tracking
     jobManager.create(user);
 
@@ -59,11 +65,11 @@ export default async function archiveRoutes(fastify, opts) {
         username: user,
         cookie,
         logger,
-        concurrency: 3,
-        maxRetries: 3,
-        rateLimitMs: rateLimitMs || 1000, // Default 1 second between downloads
+        concurrency: effectiveConcurrency,
+        maxRetries: effectiveMaxRetries,
+        rateLimitMs: effectiveRateLimit,
         limit: limit || null, // Pass limit to control page fetching
-        format: format || 'mp3', // Default to mp3 if not specified
+        format: effectiveFormat,
         existingIds: oldIds,
         db: db, // Pass database for incremental writes
         fullSync: shouldFullSync, // Enable full sync on first run or manual override
